@@ -19,14 +19,16 @@ app.post('/generate', async (req, res) => {
       return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en Render." });
     }
 
-    // Instancia de Gemini dentro de la petición
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Configuración del modelo y de A.U.R.O.R.A.
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      systemInstruction: "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL]."
-    });
+    // Usamos el identificador de modelo gemini-1.5-flash
+    const model = genAI.getGenerativeModel(
+      { 
+        model: "gemini-1.5-flash",
+        systemInstruction: "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL]."
+      },
+      { apiVersion: 'v1' } // Forzar la versión v1 estable para evitar el error 404 de v1beta
+    );
 
     const formattedHistory = (history || []).map(item => ({
       role: item.role === 'user' ? 'user' : 'model',
