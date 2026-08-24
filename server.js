@@ -19,17 +19,16 @@ app.post('/generate', async (req, res) => {
       return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en el entorno de Render." });
     }
 
-    // Inicializar el cliente oficial de Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
 
     const defaultInstruction = "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL].";
 
+    // Se especifica el modelo utilizando la nomenclatura requerida por el SDK
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       systemInstruction: systemInstruction || defaultInstruction
     });
 
-    // Formatear historial para el SDK de Node.js
     const formattedHistory = (history || []).map(item => ({
       role: item.role === 'user' ? 'user' : 'model',
       parts: [{ text: item.text }]
@@ -52,5 +51,5 @@ app.post('/generate', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor de A.U.R.O.R.A. activo y escuchando en puerto ${PORT}`);
+  console.log(`Servidor de A.U.R.O.R.A. activo en puerto ${PORT}`);
 });
