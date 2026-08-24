@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 const app = express();
 app.use(cors());
@@ -19,28 +19,29 @@ app.post('/generate', async (req, res) => {
       return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en el entorno de Render." });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const ai = new GoogleGenAI({ apiKey });
 
     const defaultInstruction = "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL].";
-
-    // Se especifica el modelo utilizando la nomenclatura requerida por el SDK
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: systemInstruction || defaultInstruction
-    });
 
     const formattedHistory = (history || []).map(item => ({
       role: item.role === 'user' ? 'user' : 'model',
       parts: [{ text: item.text }]
     }));
 
-    const chat = model.startChat({
-      history: formattedHistory
+    formattedHistory.push({
+      role: 'user',
+      parts: [{ text: prompt }]
     });
 
-    const result = await chat.sendMessage(prompt);
-    const responseText = result.response.text();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: formattedHistory,
+      config: {
+        systemInstruction: systemInstruction || defaultInstruction
+      }
+    });
 
+    const responseText = response.text;
     res.json({ text: responseText });
 
   } catch (error) {
