@@ -1,10 +1,11 @@
 import express from 'express';
 import cors from 'cors';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const SYSTEM_INSTRUCTION = "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL].";
 
 app.post('/generate', async (req, res) => {
   try {
@@ -19,29 +20,39 @@ app.post('/generate', async (req, res) => {
       return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en Render." });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // Usamos el identificador de modelo gemini-1.5-flash
-    const model = genAI.getGenerativeModel(
-      { 
-        model: "gemini-1.5-flash",
-        systemInstruction: "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL]."
-      },
-      { apiVersion: 'v1' } // Forzar la versión v1 estable para evitar el error 404 de v1beta
-    );
-
+    // Formatear historial para la API
     const formattedHistory = (history || []).map(item => ({
       role: item.role === 'user' ? 'user' : 'model',
       parts: [{ text: item.text }]
     }));
 
-    const chat = model.startChat({
-      history: formattedHistory
+    // Agregar el mensaje actual del usuario
+    formattedHistory.push({
+      role: 'user',
+      parts: [{ text: prompt }]
     });
 
-    const result = await chat.sendMessage(prompt);
-    const responseText = result.response.text();
+    const requestBody = {
+      system_instruction: {
+        parts: [{ text: SYSTEM_INSTRUCTION }]
+      },
+      contents: formattedHistory
+    };
 
+    // Petición directa a la API de Google desde el backend
+    const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await apiResponse.json();
+
+    if (!apiResponse.ok) {
+      throw new Error(data.error?.message || "Error en la respuesta de Gemini API");
+    }
+
+    const responseText = data.candidates[0].content.parts[0].text;
     res.json({ text: responseText });
 
   } catch (error) {
