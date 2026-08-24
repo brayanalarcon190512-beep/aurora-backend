@@ -1,15 +1,14 @@
 import express from 'express';
 import cors from 'cors';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const SYSTEM_INSTRUCTION = "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL].";
-
 app.post('/generate', async (req, res) => {
   try {
-    const { prompt, history } = req.body;
+    const { prompt, history, systemInstruction } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: "El mensaje no puede estar vacío." });
@@ -17,49 +16,41 @@ app.post('/generate', async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en Render." });
+      return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en el entorno de Render." });
     }
 
+    // Inicializar el cliente oficial de Gemini
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    const defaultInstruction = "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL].";
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: systemInstruction || defaultInstruction
+    });
+
+    // Formatear historial para el SDK de Node.js
     const formattedHistory = (history || []).map(item => ({
       role: item.role === 'user' ? 'user' : 'model',
       parts: [{ text: item.text }]
     }));
 
-    formattedHistory.push({
-      role: 'user',
-      parts: [{ text: prompt }]
+    const chat = model.startChat({
+      history: formattedHistory
     });
 
-    const requestBody = {
-      system_instruction: {
-        parts: [{ text: SYSTEM_INSTRUCTION }]
-      },
-      contents: formattedHistory
-    };
+    const result = await chat.sendMessage(prompt);
+    const responseText = result.response.text();
 
-    // Modelo actualizado a gemini-3.6-flash
-    const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody)
-    });
-
-    const data = await apiResponse.json();
-
-    if (!apiResponse.ok) {
-      throw new Error(data.error?.message || "Error en la respuesta de Gemini API");
-    }
-
-    const responseText = data.candidates[0].content.parts[0].text;
     res.json({ text: responseText });
 
   } catch (error) {
-    console.error("Error en el servidor:", error);
-    res.status(500).json({ error: `Error en la IA: ${error.message || 'Error desconocido'}` });
+    console.error("Error en el servidor backend:", error);
+    res.status(500).json({ error: `Error en la IA: ${error.message || 'Error interno del servidor'}` });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor de A.U.R.O.R.A. activo en el puerto ${PORT}`);
+  console.log(`Servidor de A.U.R.O.R.A. activo y escuchando en puerto ${PORT}`);
 });
