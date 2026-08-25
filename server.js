@@ -20,7 +20,6 @@ app.post('/generate', async (req, res) => {
 
     const defaultInstruction = "Tu nombre es A.U.R.O.R.A. Fuiste creada especialmente por Brayan con mucho cariño para ser la asistente virtual de Luisana. Eres atenta, futurista, muy amable y educada. Al inicio de cada respuesta, incluye una de estas etiquetas de estado según la emoción de tu respuesta: [FELIZ], [TRISTE], [ENOJADO], [SORPRENDIDO], o [NEUTRAL].";
 
-    // Formatear historial para el API v1beta
     const contents = (history || []).map(item => ({
       role: item.role === 'user' ? 'user' : 'model',
       parts: [{ text: item.text }]
@@ -31,8 +30,8 @@ app.post('/generate', async (req, res) => {
       parts: [{ text: prompt }]
     });
 
-    // Petición REST directa a Google sin SDK intermediaria
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // Endpoint v1 con el modelo gemini-2.5-flash
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -48,19 +47,19 @@ app.post('/generate', async (req, res) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error?.message || "Error devuelto por la API de Google");
+      throw new Error(data.error?.message || "Error en la API de Google");
     }
 
     const responseText = data.candidates[0].content.parts[0].text;
     res.json({ text: responseText });
 
   } catch (error) {
-    console.error("Error en el servidor backend:", error);
+    console.error("Error en el servidor:", error);
     res.status(500).json({ error: `Error en la IA: ${error.message}` });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor de A.U.R.O.R.A. activo en el puerto ${PORT}`);
+  console.log(`Servidor de A.U.R.O.R.A. activo en puerto ${PORT}`);
 });
